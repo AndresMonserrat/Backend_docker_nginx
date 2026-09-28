@@ -1,7 +1,13 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import { version } from "node:os";
-import { Product } from "../src/modules/product.js";
+import {
+  Product,
+  products,
+  ErrorResponse,
+  isCreateProductBody,
+  isCategoryProduct
+} from "../src/modules/product.js";
 
 /* Para que se usa el dotenv 
    El dotenv se usa para cargar variables de entorno desde un archivo .env en la aplicación.
@@ -10,6 +16,7 @@ import { Product } from "../src/modules/product.js";
 /* keep the env variables in the application */
 const vars = dotenv.config();
 const app = express();
+app.use(express.json());
 
 if (!vars.parsed || !vars.parsed.PORT) {
   console.error("Error: PORT variable is not defined in the .env file.");
@@ -38,12 +45,6 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
-const products = [
-  { id: 1, name: "Laptop", price: 3500000 },
-  { id: 2, name: "Mouse", price: 80000 },
-  { id: 3, name: "Teclado", price: 150000 },
-];
-
 app.get("/api/products", (req: Request, res: Response) => {
   res.json(products);
 });
@@ -56,19 +57,40 @@ app.get("/api/products/:id", (req: Request, res: Response) => {
     : res.status(404).json({ error: "Producto no encontrado" });
 });
 
-app.
+/* post implementations: */
 
-/* app.get("/api/products/:id", (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const product = products.find((p) => p.id === id);
+app.post(
+  "/api/create/product",
+  (
+    req: Request<{}, Product | ErrorResponse, unknown>,
+    res: Response<Product | ErrorResponse>,
+  ) => {
+    /* Validate: if pass, Typescript known that req.body is CreateProductBody*/
 
-  if (!product) {
-    res.status(404).json({ error: "Producto no encontrado" });
-    return;
-  }
+    if (!isCreateProductBody(req.body)) {
+      res.status(400).json({
+        error: "Se requiere name (texto no vacío) y price (número positivo)",
+      });
+      return;
+    }
 
-  res.json(product);
-}); */
+    /* read the data by the client was sent*/
+    const { name, price, category } = req.body;
+
+    /* create the new product with his new id */
+    const newid = products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
+    const newProduct: Product = {
+      id: newid,
+      name: name.trim(),
+      price,
+      category,
+    };
+    console.log("Body recibido:", req.body);
+    products.push(newProduct);
+
+    res.status(201).json(newProduct);
+  },
+);
 
 app.listen(PORT, () => {
   console.log(`Api is listening on ${PORT} port`);
