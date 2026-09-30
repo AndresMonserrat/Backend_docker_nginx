@@ -34,7 +34,7 @@ export function isCreateProductBody(body: unknown): body is CreateProductBody {
     typeof b.name === "string" &&
     b.name.trim() !== "" &&
     typeof b.price === "number" &&
-    b.price >= 0 && 
+    b.price >= 0 &&
     isCategoryProduct(b.category) &&
     (b.description === undefined || typeof b.description === "string")
   );
@@ -47,3 +47,19 @@ export function isCategoryProduct(value: unknown): value is CategoryProduct {
     (CATEGORIES as readonly string[]).includes(value)
   );
 }
+
+export interface OrderLine {
+  productId: number;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  id: number;
+  items: OrderLine[];
+  total: number;
+}
+
+export const Orders: Order[] = [];

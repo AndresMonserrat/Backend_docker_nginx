@@ -6,8 +6,10 @@ import {
   products,
   ErrorResponse,
   isCreateProductBody,
-  isCategoryProduct
+  isCategoryProduct,
+  OrderLine,
 } from "../src/modules/product.js";
+import { stringify } from "node:querystring";
 
 /* Para que se usa el dotenv 
    El dotenv se usa para cargar variables de entorno desde un archivo .env en la aplicación.
@@ -78,7 +80,8 @@ app.post(
     const { name, price, category } = req.body;
 
     /* create the new product with his new id */
-    const newid = products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
+    const newid =
+      products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
     const newProduct: Product = {
       id: newid,
       name: name.trim(),
@@ -91,6 +94,52 @@ app.post(
     res.status(201).json(newProduct);
   },
 );
+
+app.post("/api/orders", (req, res) => {
+  const { items } = req.body;
+
+  // ¿Llegó una lista con al menos un elemento?
+  if (!Array.isArray(items) || items.length === 0) {
+    res
+      .status(400)
+      .json({ error: "items debe ser una lista con al menos un producto" });
+    return;
+  }
+
+  const lines: OrderLine[] = [];
+
+  // Repetir lo mismo del Pedacito 4, una vez por cada item
+  for (const item of items) {
+    const productId = item?.productId;
+    const quantity = item?.quantity;
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      res
+        .status(400)
+        .json({ error: "Cada quantity debe ser un entero mayor que 0" });
+      return;
+    }
+
+    const product = products.find((p) => p.id === productId);
+
+    if (!product) {
+      res
+        .status(404)
+        .json({ error: `El producto con id ${productId} no existe` });
+      return;
+    }
+
+    lines.push({
+      productId: product.id,
+      productName: product.name,
+      unitPrice: product.price,
+      quantity,
+      subtotal: product.price * quantity,
+    });
+  }
+
+  res.json({ lineas: lines });
+});
 
 app.listen(PORT, () => {
   console.log(`Api is listening on ${PORT} port`);
